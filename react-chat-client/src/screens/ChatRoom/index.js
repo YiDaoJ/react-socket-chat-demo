@@ -20,14 +20,17 @@ function ChatRoom(props) {
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
-      if( Object.keys(joinData).length > 0) {
-        setMessages([joinData])    
-        socket.on('message', (message, error) => {
-          setMessages(msgs => [ ...msgs, message ]);
-        });
-      } else {
-        history.push('/join')
-      }
+    if( Object.keys(joinData).length > 0) {
+      setMessages([joinData])    
+      socket.on('message', (message, error) => {
+        setMessages(msgs => [ ...msgs, message ]);
+      });
+      socket.on('roomInfo', (users) => {
+        setUsers(users)
+      })
+    } else {
+      history.push('/join')
+    }
   }, [joinData])
 
   const handleChange = (e) => {
@@ -56,6 +59,7 @@ function ChatRoom(props) {
     <ChatContainer>
       <Header room={room} />
       <StyledContainer>
+        <List users={users.users}/>
         <ChatBox>
           <>
             <Messages messages={messages} username={username} />

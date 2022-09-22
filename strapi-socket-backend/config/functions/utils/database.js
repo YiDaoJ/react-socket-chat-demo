@@ -30,8 +30,28 @@ async function userExits(id) {
   }
 }
 
+async function getUsersInRoom(room) {
+  try {
+    const usersInRoom = await strapi.services.users.find({ room })
+    return usersInRoom
+  } catch (err) {
+    console.log("Error occured: ", err)
+  }
+}
+
+async function deleteUser(username) {
+  try {
+    const user = await strapi.services.users.delete({ username })
+    return user
+  } catch (err) {
+    console.log('Error occured while deleting the User: ', err)
+  }
+}
+
 module.exports = {
   findUser,
   createUser,
-  userExits
+  userExits,
+  getUsersInRoom,
+  deleteUser
 }

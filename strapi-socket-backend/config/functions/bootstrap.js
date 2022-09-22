@@ -10,7 +10,7 @@
  * See more details here: https://strapi.io/documentation/developer-docs/latest/setup-deployment-guides/configurations.html#bootstrap
  */
 
-const { findUser, createUser, userExits } = require('./utils/database')
+const { findUser, createUser, userExits, getUsersInRoom, deleteUser } = require('./utils/database')
 
 module.exports = () => {
   const io = require('socket.io')(strapi.server, {
@@ -23,6 +23,8 @@ module.exports = () => {
   });
 
   io.on('connection', function(socket) {
+
+    // join room
     socket.on('join', async ({ username, room }, callback) => {
       try {
         const userExits = await findUser(username, room)
@@ -39,10 +41,17 @@ module.exports = () => {
               text: `${user.username}, Welcome to room ${user.room}.`,
               userData: user
             })
+
             socket.broadcast.to(user.room).emit('message', {
               user: 'bot',
               text: `${user.username} has joined.`
             })
+
+            io.to(user.room).emit('roomInfo', {
+              room: user.room,
+              users: await getUsersInRoom(user.room)
+            });
+
           } else {
             callback('user can not be created. Try again.')
           }
@@ -56,6 +65,7 @@ module.exports = () => {
       }
     })
 
+    // send msg
     socket.on('sendMessage', async(data, callback) => {
       try {
         const user = await userExits(data.userId)
@@ -64,6 +74,10 @@ module.exports = () => {
           io.to(user.room).emit('message', {
             user: user.username,
             text: data.message
+          })
+          socket.emit('message', {
+            user: 'bot',
+            text: `Hallöchen`
           })
         } else {
           callback("User doesn't exist in the database. Rejoin the chat.")
@@ -75,6 +89,27 @@ module.exports = () => {
         console.log('Catched error: ', err)
       }
     })
+
+    socket.on('disconnect', async({username}) => {
+      // console.log('data: ', data)
+      try {
+        console.log(" --- DISCONNECTED ---");
+        const user = await deleteUser(username);
+        console.log("deleted user is", user)
+        if(user.length > 0) {
+          io.to(user[0].room).emit('message', {
+            user: user[0].username,
+            text: `User ${user[0].username} has left the chat.`,
+          });
+          io.to(user.room).emit('roomInfo', {
+            room: user.room,
+            users: await getUsersInRoom(user[0].room)
+          });
+        }
+      } catch(err) {
+          console.log("Error occured while disconnecting", err);
+      }
+    });
 
   });
 };
